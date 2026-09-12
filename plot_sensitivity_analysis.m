@@ -9,26 +9,18 @@ result_file = ...
     'data/sensitivity_baseline_N2000_lambda_02_safety_08_trials_5.mat';
 load(result_file, 'sensitivity_summary', 'initial_P')
 
-% Each figure shows mean +/- standard deviation for the marker-disabled
-% and marker-enabled planners. Figures are saved in the "data" folder.
+% Each figure shows mean +/- standard deviation for the planners without
+% and with a marker. Figures are saved in the "data" folder.
 plot_sensitivity_figure(sensitivity_summary, initial_P, 'lambda', ...
     'Uncertainty weight, \lambda', false, ...
     'data/sensitivity_lambda.png');
 
-plot_sensitivity_figure(sensitivity_summary, initial_P, 'sensing_radius', ...
-    'Marker sensing radius, r_m [m]', false, ...
-    'data/sensitivity_sensing_radius.png');
-
 plot_sensitivity_figure(sensitivity_summary, initial_P, 'marker_covariance', ...
-    'Marker measurement covariance scalar', true, ...
+    'Marker measurement covariance, R_m', true, ...
     'data/sensitivity_marker_covariance.png');
 
-plot_sensitivity_figure(sensitivity_summary, initial_P, 'roadmap_size', ...
-    'Roadmap size, N', false, ...
-    'data/sensitivity_roadmap_size.png');
-
 plot_sensitivity_figure(sensitivity_summary, initial_P, 'marker_location', ...
-    'Marker location', false, ...
+    'Marker location, (x,y)', false, ...
     'data/sensitivity_marker_location.png');
 
 function plot_sensitivity_figure(summary, initial_P, factor_name, x_label, ...
@@ -70,11 +62,10 @@ errorbar(x, data.on_uncertainty_mean/trace(initial_P), ...
     'LineWidth', 1.5, 'MarkerSize', 6)
 xlabel(x_label)
 ylabel('tr(P_{goal})/tr(P_{start})')
-title('Terminal uncertainty')
 legend({'Without marker', 'With marker'}, ...
     'Location', 'best', 'FontSize', 9)
 format_sensitivity_axis(use_log_scale, x, x_tick_labels)
-ylim([0, 5])
+ylim([0, 3])
 
 nexttile
 hold on
@@ -86,7 +77,6 @@ errorbar(x, data.on_travel_mean, data.on_travel_std, '-s', ...
     'LineWidth', 1.5, 'MarkerSize', 6)
 xlabel(x_label)
 ylabel('D_{travel} [m]')
-title('Travel distance')
 format_sensitivity_axis(use_log_scale, x, x_tick_labels)
 ylim([0, 3])
 
@@ -100,7 +90,6 @@ errorbar(x, data.on_cost_mean, data.on_cost_std, '-s', ...
     'LineWidth', 1.5, 'MarkerSize', 6)
 xlabel(x_label)
 ylabel('D_{total}')
-title('Total objective')
 format_sensitivity_axis(use_log_scale, x, x_tick_labels)
 ylim([0, 3])
 
