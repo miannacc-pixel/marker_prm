@@ -6,13 +6,15 @@ function [node, distance, predecessor] = dijkstra_ekf_prm(node, neighbor_ID, ...
 % from a settled vertex, its endpoint covariance is predicted as
 % P_next = F*P_current*F' + R*Dtravel and its time is increased by
 % Dtravel/robot_speed. The Dijkstra distance is the exact objective
-% Dtotal = Dtravel + lambda*trace(P) for the prediction-only model.
+% Dtotal = Dtravel + lambda*trace(P)/trace(P_initial) for the
+% prediction-only model.
 
 N = numel(node);
 distance = inf(N,1);
 predecessor = zeros(N,1);
 settled = false(N,1);
-distance(1) = lambda * trace(node(1).P);
+uncertainty_reference = trace(node(1).P);
+distance(1) = lambda * trace(node(1).P) / uncertainty_reference;
 
 while true
     candidate_ID = find(~settled);
@@ -59,9 +61,10 @@ while true
         end
 
         % This increment telescopes from the source to the endpoint, so each
-        % stored distance equals total travel plus lambda*trace(P) exactly.
+        % stored distance equals total travel plus the normalized terminal
+        % uncertainty term exactly.
         edge_cost = dist_stigmergy_mat(travel_distance, node(current_ID).P, ...
-            next_node.P, lambda);
+            next_node.P, lambda, uncertainty_reference);
         tentative_distance = distance(current_ID) + edge_cost;
 
         if tentative_distance < distance(next_vertex)

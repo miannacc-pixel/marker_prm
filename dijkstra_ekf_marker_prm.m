@@ -14,7 +14,8 @@ d_before = inf(N,1); d_after = inf(N,1);
 parent_before = zeros(N,1); parent_after = zeros(N,1);
 parent_after_state = zeros(N,1);
 
-d_before(1) = lambda * trace(node(1).P);
+uncertainty_reference = trace(node(1).P);
+d_before(1) = lambda * trace(node(1).P) / uncertainty_reference;
 P_before(:,:,1) = node(1).P;
 t_before(1) = 0;
 settled = false(N,1);
@@ -36,7 +37,8 @@ while true
         if enters_marker, continue, end
         [nextP, nextt, edge_cost, feasible] = normal_edge(node(current).x, ...
             node(next).x, P_before(:,:,current), t_before(current), F, R, ...
-            robot_speed, lambda, obstacle_edge, chi, bound, num_props, prop);
+            robot_speed, lambda, uncertainty_reference, obstacle_edge, chi, ...
+            bound, num_props, prop);
         if feasible && d_before(current) + edge_cost < d_before(next)
             d_before(next) = d_before(current) + edge_cost;
             P_before(:,:,next) = nextP; t_before(next) = nextt;
@@ -57,8 +59,8 @@ for current = 1:N
         if ~enters_marker, continue, end
         [nextP, nextt, edge_cost, feasible] = marker_edge(node(current).x, ...
             node(next).x, P_before(:,:,current), t_before(current), F, R, ...
-            robot_speed, lambda, marker, fraction, obstacle_edge, chi, bound, ...
-            num_props, prop);
+            robot_speed, lambda, uncertainty_reference, marker, fraction, ...
+            obstacle_edge, chi, bound, num_props, prop);
         if feasible && d_before(current) + edge_cost < d_after(next)
             d_after(next) = d_before(current) + edge_cost;
             P_after(:,:,next) = nextP; t_after(next) = nextt;
@@ -85,7 +87,8 @@ while true
         if settled(next), continue, end
         [nextP, nextt, edge_cost, feasible] = normal_edge(node(current).x, ...
             node(next).x, P_after(:,:,current), t_after(current), F, R, ...
-            robot_speed, lambda, obstacle_edge, chi, bound, num_props, prop);
+            robot_speed, lambda, uncertainty_reference, obstacle_edge, chi, ...
+            bound, num_props, prop);
         if feasible && d_after(current) + edge_cost < d_after(next)
             d_after(next) = d_after(current) + edge_cost;
             P_after(:,:,next) = nextP; t_after(next) = nextt;
@@ -124,19 +127,19 @@ end
 distance = [d_before d_after]; predecessor = [parent_before parent_after];
 end
 
-function [nextP,nextt,cost,feasible] = normal_edge(x0,x1,P,t,F,R,v,lambda,edges,chi,bound,nprop,prop)
+function [nextP,nextt,cost,feasible] = normal_edge(x0,x1,P,t,F,R,v,lambda,uncertainty_reference,edges,chi,bound,nprop,prop)
 d = norm(x1-x0); nextP = F*P*F.' + R*d; nextP = (nextP+nextP.')/2; nextt = t+d/v;
 feasible = ~psuedo_obs_check_line2_oct(belief_node(x0,P,chi), belief_node(x1,nextP,chi), edges,R,chi,bound,nprop,prop);
-cost = dist_stigmergy_mat(d, P, nextP, lambda);
+cost = dist_stigmergy_mat(d, P, nextP, lambda, uncertainty_reference);
 end
 
-function [nextP,nextt,cost,feasible] = marker_edge(x0,x1,P,t,F,R,v,lambda,marker,fraction,edges,chi,bound,nprop,prop)
+function [nextP,nextt,cost,feasible] = marker_edge(x0,x1,P,t,F,R,v,lambda,uncertainty_reference,marker,fraction,edges,chi,bound,nprop,prop)
 d = norm(x1-x0); Pend = F*P*F.'+R*d; Pend=(Pend+Pend.')/2; nextt=t+d/v;
 feasible = ~psuedo_obs_check_line2_oct(belief_node(x0,P,chi), belief_node(x1,Pend,chi), edges,R,chi,bound,nprop,prop);
 Ppre=F*P*F.'+R*(fraction*d); Ppre=(Ppre+Ppre.')/2;
 Ppost=ekf_update_covariance(Ppre,marker.H,marker.R);
 nextP=F*Ppost*F.'+R*((1-fraction)*d); nextP=(nextP+nextP.')/2;
-cost=dist_stigmergy_mat(d, P, nextP, lambda);
+cost=dist_stigmergy_mat(d, P, nextP, lambda, uncertainty_reference);
 end
 
 function n = belief_node(x,P,chi)

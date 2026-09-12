@@ -2,6 +2,11 @@ clear all
 close all
 clc
 
+% Main
+
+% Use the same sampled roadmap for marker-absent and marker-present runs.
+rng(23, 'twister')
+
 N = 2000; % Total number of roadmap vertices, including the initial vertex
 
 %% Definition of the roadmap vertex structure
@@ -33,8 +38,8 @@ node(1:N) = struct('x', ini_st*ones(1,2), 'P', ini_P, 't', ini_st, ...
 % Euclidean distance is less than this value.
 connection_radius = 0.5;
 
-% Weight on terminal uncertainty in Dtotal = Dtravel + lambda*trace(Pgoal).
-lambda = 1000;
+% Weight on normalized terminal uncertainty in Dtotal = Dtravel + lambda*trace(Pgoal)/trace(Pstart).
+lambda = 0.2;
 
 % EKF prediction model. P is propagated along each accepted PRM edge rather
 % than independently sampled at every roadmap vertex.
@@ -48,14 +53,21 @@ robot_speed = 1.0; % [m/s]
 R = (1/10000)*eye(2);
 
 % Confidence bound used for collision checking
-chi = chi2inv(0.8,2);
+safety_probability = 0.8;
+chi = chi2inv(safety_probability,2);
 
 %% Optional stigmergy marker
 
 % Toggle this value to compare the prediction-only baseline (false) with an
-% available static marker measurement (true).
+% available static marker measurement (true). 
 marker_enabled = true;
-marker.x = [0.80, 0.60];
+
+% Comment the ones not in use and uncomment only the one in use
+% marker.x = [0.80, 0.60]; % baseline environment
+% marker.x = [0.87, 0.13]; % visual abstract environment
+% marker.x = [0.60, 0.35]; % forest environment
+marker.x = [0.85, 0.35]; % cavern environment
+
 marker.sensing_radius = 0.10;
 marker.H = eye(2);
 marker.R = 1e-5 * eye(2);
@@ -63,27 +75,41 @@ marker.R = 1e-5 * eye(2);
 %% Environment definition and Properties
 
 % current enviroment is  " multiple obstacle enviroment" 
+
+        % Comment the ones not in use and uncomment only the one in use
+        % environment_name = 'baseline';
+        % environment_name = 'visual_abstract';
+        % environment_name = 'forest';
+        environment_name = 'cavern';
         
         % define obstacle as a set of edges 
         % each edge is defined by: start point, end point, slope, and Y_axis
         % intercept
-        obstacle_edge = obstacle_multi();
-        obs_polyshape= obstacle_polyshape(); %definition of obstacles to use polyshape functionalities of Matlab
+        obstacle_edge = obstacle_multi(environment_name);
+        obs_polyshape= obstacle_polyshape(environment_name); %definition of obstacles to use polyshape functionalities of Matlab
 
-        % Target(final) area [xmin, xmax; ymin, ymax]
-        target = [0.8, 0.9; 0.1, 0.2];
+        % Target(final) area [xmin, xmax; ymin, ymax]. 
+        % Comment the ones not in use and uncomment only the one in use
+        % target = [0.8, 0.9; 0.1, 0.2]; % baseline environment
+        % target = [0.86, 0.96; 0.44, 0.56]; % visual abstract environment
+        % target = [0.85, 0.95; 0.85, 0.95]; % forest environment
+        target = [0.85, 0.95; 0.85, 0.95]; % cavern environment
 
         % Path planning area
         bound(1).x = [0,1];
         bound(2).x = [0,1];
 
         % The position of the initial node
-        node(1).x = [0.1, 0.1];
+        % Comment the ones not in use and uncomment only the one in use
+        % node(1).x = [0.1, 0.1]; % baseline environment
+        % node(1).x = [0.1, 0.5]; % visual abstract environment
+        % node(1).x = [0.1, 0.1]; % forest environment
+        node(1).x = [0.1, 0.1]; % cavern environment
 
 %% The setting for initial node
 node(1).P = 1e-4 * eye(2);
 node(1).t = 0;
-node(1).value = lambda * trace(node(1).P);
+node(1).value = lambda * trace(node(1).P) / trace(node(1).P);
 
 [node(1).ra,node(1).rb,node(1).ang,node(1).ellipse_rect] = error_ellipse(node(1).x, node(1).P, chi);
 % [ra=major axis, rb=minor axis, ang= rotation angle , rect=bounding box] 
@@ -124,7 +150,7 @@ x_all = reshape([node.x], 2, N).';
 neighbor_ID = rangesearch(x_all, x_all, connection_radius);
 
 % Step 3: Dijkstra search with EKF covariance and time propagation. When the
-% marker is enabled, use one layer before sensing and one after sensing.
+% marker is present, use one layer before sensing and one after sensing.
 if marker_enabled
     [node, distance, predecessor, path, min_path_leng] = ...
         dijkstra_ekf_marker_prm(node, neighbor_ID, F, R, robot_speed, lambda, ...
@@ -158,15 +184,16 @@ min_path_data(N) = min_path_leng;
 %%%%%%%%%%%%%% All data should be saved here %%%%%%%%%%%%%%%
 % The file name used for save the data
 % Data is saved in "data" folder
-% Name includes marker mode, N, lambda value, and connection radius.
+% Name includes environment, marker mode, N, lambda value, and safety probability.
 if marker_enabled
-    marker_name = 'marker_on';
+    marker_name = 'with_marker';
 else
-    marker_name = 'marker_off';
+    marker_name = 'without_marker';
 end
-savename = ['data/PRM_stigmergy_', marker_name, '_N', num2str(N), ...
+savename = ['data/main_', environment_name, '_', marker_name, ...
+    '_N', num2str(N), ...
     '_lambda_', num2str(lambda), ...
-    '_radius_', num2str(connection_radius)];
+    '_safety_', num2str(safety_probability)];
 savename(savename=='.') = [];
 save(savename)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
