@@ -6,7 +6,7 @@ clc
 % Loads the completed sensitivity-analysis data and generates figures
 
 result_file = ...
-    'data/sensitivity_baseline_N2000_lambda_02_safety_08_trials_5.mat';
+    'data/2sensitivity_baseline_N2000_lambda_02_safety_08_trials_5.mat';
 load(result_file, 'sensitivity_summary', 'initial_P')
 
 % Each figure shows mean +/- standard deviation for the planners without
@@ -63,7 +63,7 @@ errorbar(x, data.on_uncertainty_mean/trace(initial_P), ...
 xlabel(x_label)
 ylabel('tr(P_{goal})/tr(P_{start})')
 legend({'Without marker', 'With marker'}, ...
-    'Location', 'best', 'FontSize', 9)
+    'Location', 'northwest', 'FontSize', 9)
 format_sensitivity_axis(use_log_scale, x, x_tick_labels)
 ylim([0, 3])
 
@@ -77,6 +77,8 @@ errorbar(x, data.on_travel_mean, data.on_travel_std, '-s', ...
     'LineWidth', 1.5, 'MarkerSize', 6)
 xlabel(x_label)
 ylabel('D_{travel} [m]')
+legend({'Without marker', 'With marker'}, ...
+    'Location', 'northwest', 'FontSize', 9)
 format_sensitivity_axis(use_log_scale, x, x_tick_labels)
 ylim([0, 3])
 
@@ -90,6 +92,8 @@ errorbar(x, data.on_cost_mean, data.on_cost_std, '-s', ...
     'LineWidth', 1.5, 'MarkerSize', 6)
 xlabel(x_label)
 ylabel('D_{total}')
+legend({'Without marker', 'With marker'}, ...
+    'Location', 'northwest', 'FontSize', 9)
 format_sensitivity_axis(use_log_scale, x, x_tick_labels)
 ylim([0, 3])
 
@@ -105,6 +109,9 @@ box on
 
 if use_log_scale
     set(gca, 'XScale', 'log')
+    xticks(x)
+    xticklabels({'10^{-5}', '3\times10^{-5}', '10^{-4}', ...
+        '3\times10^{-4}', '10^{-3}'})
 end
 
 if ~isempty(x_tick_labels)

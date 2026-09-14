@@ -122,18 +122,18 @@ prop(1:num_props) = struct('x', ini_st*ones(1,2), 'P', ini_st*eye(2), 'ra', ini_
 
 % The lambda values span both sides of the approximate point at which the
 % marker detour becomes worthwhile in the paired-roadmap evaluation.
-lambda_values = [0, 0.05, 0.1, 0.2, 0.8];
+lambda_values = [0, 0.05, 0.1, 0.15, 0.2];
 
 % Each scalar below defines an isotropic covariance R_m = value*I.
-marker_covariance_values = [1e-6, 1e-5, 1e-4, 5e-4, 1e-3];
+marker_covariance_values = [1e-5, 3e-5, 1e-4, 3e-4, 1e-3];
 
 % Marker locations progress from near the direct route toward locations
 % that require a larger detour.
 marker_location_values = [0.65, 0.20; ...
                           0.65, 0.40; ...
                           0.65, 0.60; ...
-                          0.80, 0.60; ...
-                          0.80, 0.80];
+                          0.65, 0.80; ...
+                          0.65, 1.0];
 
 factor_names = {'lambda', 'marker_covariance', 'marker_location'};
 number_of_levels = [numel(lambda_values), ...
