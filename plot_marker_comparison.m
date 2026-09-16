@@ -1,12 +1,12 @@
-% PLOT_MARKER_COMPARISON Compare marker-disabled and marker-enabled runs.
+% PLOT_MARKER_COMPARISON Compare marker-absent and marker-present runs.
 %
 % This script loads one PRM result without the marker and a 
 % matching result with the marker, then compares terminal 
 % uncertainty, path length, and the exact planning objective 
 % Dtotal = Dtravel + lambda*trace(Pgoal)/trace(Pstart).
 %
-% Run main.m once with marker_enabled = false and once with
-% marker_enabled = true before running this script. Change the two
+% Run main.m once without a marker and once with a marker before running
+% this script. Change the two
 % filenames below when comparing a different pair of runs.
 
 clear
@@ -23,7 +23,7 @@ on_run = load(marker_on_file);
 off_metrics = path_metrics(off_run, marker_off_file);
 on_metrics = path_metrics(on_run, marker_on_file);
 
-labels = {'Without marker', 'With marker'};
+labels = {'Marker absent', 'Marker present'};
 bar_colors = [0.35 0.35 0.35; 0.4940 0.1840 0.5560];
 
 fig_f = figure('Color', 'w');
@@ -32,7 +32,7 @@ tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
 
 nexttile
 make_comparison_bar([off_metrics.normalized_uncertainty, on_metrics.normalized_uncertainty], ...
-    labels, bar_colors, 'Terminal uncertainty', ...
+    labels, bar_colors, 'Normalized terminal uncertainty', ...
     'tr(P_{goal})/tr(P_{start})', '%.3g');
 ylim([0, 3])
 yticks(0:1:3)
@@ -45,7 +45,7 @@ yticks(0:1:3)
 
 nexttile
 make_comparison_bar([off_metrics.total_cost, on_metrics.total_cost], ...
-    labels, bar_colors, 'Planning objective', 'D_{total}', '%.3g');
+    labels, bar_colors, 'Total planning objective', 'D_{total}', '%.3g');
 ylim([0, 3])
 yticks(0:1:3)
 
@@ -98,6 +98,7 @@ set(gca, 'XTick', x_positions, 'XTickLabel', labels, 'FontName', 'Arial', ...
     'FontSize', 10, 'LineWidth', 1)
 xlim([0.4, 3.1])
 ylabel(y_label)
+title(plot_title, 'FontWeight', 'bold', 'FontSize', 11)
 grid on
 box off
 
