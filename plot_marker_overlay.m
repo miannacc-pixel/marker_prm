@@ -11,9 +11,9 @@ clc
 
 % Change filenames when plotting a different environment.
 marker_off_file = ...
-    'data/main_cavern_without_marker_N2000_lambda_02_safety_08.mat';
+    'data/main_cavern_without_marker_N2000_lambda_02_safety_08';
 marker_on_file = ...
-    'data/main_cavern_with_marker_N2000_lambda_02_safety_08.mat';
+    'data/main_cavern_with_marker_N2000_lambda_02_safety_08';
 
 off_run = load(marker_off_file);
 on_run = load(marker_on_file);
@@ -119,6 +119,9 @@ start_handle = plot(ax, start(1), start(2), 'o', 'Color', [0.85, 0, 0], ...
 
 xlabel(ax, 'Location X [m]')
 ylabel(ax, 'Location Y [m]')
+
+% Change for different plots
+title('Cavern environment')
 
 legend(ax, [path_off_handle, path_on_handle, range_handle, ...
     marker_handle, start_handle, goal_handle], ...
