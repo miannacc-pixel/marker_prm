@@ -19,6 +19,10 @@ marker_encounter.m & ekf_update_covariance.m: detect marker-range entry and appl
 
 reconstruct_prm_path.m: Reconstructs the final source-to-target PRM path
 
+marker_events.m: Finds unsensed markers within sensing range of a roadmap edge and orders their measurements along the direction of travel.
+
+marker_edge_covariance.m: Propagates covariance along a roadmap edge and applies the ordered EKF marker updates. Also computes intermediate covariances for plotting.
+
 obstacle_multi.m & obstacle_polyshape.m: specify the obstacles position and their shape for a sample "multiple obstacles" enviroment
 
 sample_free_position.m: samples a collision-free spatial PRM vertex; does not sample covariance

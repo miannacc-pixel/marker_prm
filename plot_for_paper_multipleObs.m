@@ -39,17 +39,20 @@ end
 
 % Show the marker and sensing radius for marker-present runs.
 if exist('marker_enabled','var') && marker_enabled
-    theta_marker = linspace(0,2*pi);
-    plot(marker.x(1) + marker.sensing_radius*cos(theta_marker), ...
-        marker.x(2) + marker.sensing_radius*sin(theta_marker), '--', ...
-        'Color', color_p, 'LineWidth', 1)
-    plot(marker.x(1), marker.x(2), 'p', 'Color', color_p, ...
-        'MarkerFaceColor', color_p, 'MarkerSize', 10)
+    for marker_index = 1:numel(marker)
+        theta_marker = linspace(0,2*pi);
+        plot(marker(marker_index).x(1) + marker(marker_index).sensing_radius*cos(theta_marker), ...
+            marker(marker_index).x(2) + marker(marker_index).sensing_radius*sin(theta_marker), '--', ...
+            'Color', color_p, 'LineWidth', 1)
+        plot(marker(marker_index).x(1), marker(marker_index).x(2), 'p', 'Color', color_p, ...
+            'MarkerFaceColor', color_p, 'MarkerSize', 10)
+    end
 end
 
 %% plot optimal path and confidence ellipses
 theta_grid = linspace(0,2*pi);
-marker_has_been_sensed = false;
+if ~exist('marker','var'), marker = []; end
+marker_has_been_sensed = false(1,numel(marker));
 
 % Plot ellipses connecting two nodes
 for jj = 1:length(saver(end).path)-1
@@ -61,25 +64,18 @@ for jj = 1:length(saver(end).path)-1
 
     % If this edge first enters the marker range, propagate to the sensing
     % point, apply its EKF update, then propagate the remaining distance.
-    edge_senses_marker = false;
-    if exist('marker_enabled','var') && marker_enabled && ~marker_has_been_sensed
-        [edge_senses_marker, marker_fraction] = marker_encounter(x0, xF, marker);
-        if edge_senses_marker
-            P_before_marker = P0 + R*(marker_fraction*edge_distance);
-            P_after_marker = ekf_update_covariance(P_before_marker, marker.H, marker.R);
-        end
+    % With multiple markers, apply their updates in travel order.
+    marker_ids = []; marker_fractions = [];
+    if exist('marker_enabled','var') && marker_enabled
+        [marker_ids,marker_fractions] = marker_events(x0,xF,marker,marker_has_been_sensed);
     end
 
     for zz = 1:num_props+1
         prop(zz).x = x0 + move_vec*zz;
         edge_fraction = zz/(num_props+1);
 
-        if edge_senses_marker && edge_fraction > marker_fraction
-            prop(zz).P = P_after_marker + ...
-                R*((edge_fraction-marker_fraction)*edge_distance);
-        else
-            prop(zz).P = P0 + R*(edge_fraction*edge_distance);
-        end
+        prop(zz).P = marker_edge_covariance(P0,edge_distance,R,marker, ...
+            marker_ids,marker_fractions,edge_fraction);
 
         [prop(zz).ra,prop(zz).rb,prop(zz).ang,prop(zz).ellipse_rect] = error_ellipse(prop(zz).x,prop(zz).P,chi);
         ellipse_x_r  = prop(zz).ra*cos( theta_grid );
@@ -90,9 +86,7 @@ for jj = 1:length(saver(end).path)-1
         hold on;
     end
 
-    if edge_senses_marker
-        marker_has_been_sensed = true;
-    end
+    marker_has_been_sensed(marker_ids) = true;
 end
 %%
 % Plot initial node with red dots

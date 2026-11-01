@@ -65,6 +65,10 @@ marker.sensing_radius = 0.10;
 marker.H = eye(2);
 marker.R = 1e-5 * eye(2);
 
+% To add another marker, copy the settings and change its position:
+% marker(2) = marker(1);
+% marker(2).x = [0.25, 0.55];
+
 %% Environment definition and Properties
 
 % current enviroment is  " multiple obstacle enviroment" 
@@ -168,7 +172,7 @@ for trial = 1:number_of_trials
     roadmap_positions{trial} = x_all;
 
     % Step 3: Dijkstra search with EKF covariance and time propagation. When the
-    % marker is present, use one layer before sensing and one after sensing.
+    % markers are present, use a layer for each reachable sensed-marker subset.
     % The paired evaluation runs both versions instead of selecting one with a toggle.
 
     %% Marker-absent search
@@ -214,7 +218,7 @@ for trial = 1:number_of_trials
     node_on = shared_node;
     planner_tic = tic;
 
-    [node_on, ~, ~, path_on] = dijkstra_ekf_marker_prm( ...
+    [node_on, ~, ~, path_on, ~, marker_search] = dijkstra_ekf_marker_prm( ...
         node_on, neighbor_ID, F, R, robot_speed, lambda, marker, ...
         obstacle_edge, chi, bound, num_props, prop, target);
 
@@ -222,7 +226,8 @@ for trial = 1:number_of_trials
 
     if ~isempty(path_on)
         marker_on_success(trial) = true;
-        marker_on_path{trial} = path_on;
+        % Saved paths index roadmap_positions.
+        marker_on_path{trial} = marker_search.roadmap_path;
         positions_on = reshape([node_on(path_on).x], 2, []).';
         marker_on_travel(trial) = sum( ...
             vecnorm(diff(positions_on,1,1), 2, 2));
@@ -233,7 +238,7 @@ for trial = 1:number_of_trials
             lambda * marker_on_terminal_uncertainty(trial) / initial_uncertainty;
 
         for ii = 1:size(positions_on,1)-1
-            if marker_encounter(positions_on(ii,:), positions_on(ii+1,:), marker)
+            if ~isempty(marker_events(positions_on(ii,:), positions_on(ii+1,:), marker))
                 marker_on_visited(trial) = true;
                 break
             end

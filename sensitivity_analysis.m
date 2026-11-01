@@ -65,6 +65,10 @@ marker.sensing_radius = 0.10;
 marker.H = eye(2);
 marker.R = 1e-5 * eye(2);
 
+% To add another marker, copy the settings and change its position:
+% marker(2) = marker(1);
+% marker(2).x = [0.25, 0.55];
+
 %% Environment definition and Properties
 
 % current enviroment is  " multiple obstacle enviroment" 
@@ -135,6 +139,7 @@ marker_location_values = [0.65, 0.20; ...
                           0.65, 0.80; ...
                           0.65, 1.0];
 
+% Marker location/noise sweeps vary marker(1); additional markers stay fixed.
 factor_names = {'lambda', 'marker_covariance', 'marker_location'};
 number_of_levels = [numel(lambda_values), ...
     numel(marker_covariance_values), ...
@@ -192,10 +197,10 @@ for factor_index = 1:numel(factor_names)
                     current_lambda = current_value;
                 case 'marker_covariance'
                     current_value = marker_covariance_values(level_index);
-                    current_marker.R = current_value * eye(2);
+                    current_marker(1).R = current_value * eye(2);
                 case 'marker_location'
                     current_value = level_index;
-                    current_marker.x = marker_location_values(level_index,:);
+                    current_marker(1).x = marker_location_values(level_index,:);
             end
 
             rng(random_seeds(trial), 'twister')
@@ -231,7 +236,7 @@ for factor_index = 1:numel(factor_names)
             current_roadmap_time = toc(roadmap_tic);
 
             % Step 3: Dijkstra search with EKF covariance and time propagation. When the
-            % marker is present, use one layer before sensing and one after sensing.
+            % markers are present, use a layer for each reachable sensed-marker subset.
             % The sensitivity analysis runs both versions instead of selecting one with a toggle.
 
             %% Marker-absent search
@@ -268,8 +273,8 @@ for factor_index = 1:numel(factor_names)
                 factor{row} = current_factor;
                 level(row) = level_index;
                 level_value(row) = current_value;
-                marker_x(row) = current_marker.x(1);
-                marker_y(row) = current_marker.x(2);
+                marker_x(row) = current_marker(1).x(1);
+                marker_y(row) = current_marker(1).x(2);
                 seed(row) = random_seeds(trial);
                 roadmap_generation_time(row) = current_roadmap_time;
 
@@ -379,7 +384,7 @@ result.total_cost = result.travel_distance + lambda * ...
     result.terminal_uncertainty / trace(node(1).P);
 
 for ii = 1:size(positions,1)-1
-    if marker_encounter(positions(ii,:), positions(ii+1,:), marker)
+    if ~isempty(marker_events(positions(ii,:), positions(ii+1,:), marker))
         result.marker_visited = true;
         break
     end

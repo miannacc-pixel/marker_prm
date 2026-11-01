@@ -53,8 +53,8 @@ if ~isfield(on_run, 'marker')
     error('The marker-enabled data file does not contain marker settings.')
 end
 
-off_positions = reshape([off_run.node.x], 2, []).';
-on_positions = reshape([on_run.node.x], 2, []).';
+off_positions = reshape([off_run.node(1:off_run.N).x], 2, []).';
+on_positions = reshape([on_run.node(1:on_run.N).x], 2, []).';
 if ~isequal(off_positions, on_positions)
     warning(['The two runs used different sampled roadmaps. The paths can ', ...
         'still be plotted together, but a paired comparison should use ', ...
@@ -97,14 +97,17 @@ goal_handle = patch(ax, goal_x, goal_y, goal_fill_color, ...
     'EdgeColor', goal_edge_color, 'LineWidth', 1.5);
 
 % Plot the marker and its sensing region.
-theta = linspace(0, 2*pi, 160);
-range_handle = plot(ax, ...
-    on_run.marker.x(1) + on_run.marker.sensing_radius*cos(theta), ...
-    on_run.marker.x(2) + on_run.marker.sensing_radius*sin(theta), '--', ...
-    'Color', marker_color, 'LineWidth', 1.5);
-marker_handle = plot(ax, on_run.marker.x(1), on_run.marker.x(2), 'p', ...
-    'Color', marker_color, 'MarkerFaceColor', marker_color, ...
-    'MarkerSize', 13);
+range_handle = gobjects(0); marker_handle = gobjects(0);
+for marker_index = 1:numel(on_run.marker)
+    theta = linspace(0, 2*pi, 160);
+    range_handle = plot(ax, ...
+        on_run.marker(marker_index).x(1) + on_run.marker(marker_index).sensing_radius*cos(theta), ...
+        on_run.marker(marker_index).x(2) + on_run.marker(marker_index).sensing_radius*sin(theta), '--', ...
+        'Color', marker_color, 'LineWidth', 1.5);
+    marker_handle = plot(ax, on_run.marker(marker_index).x(1), on_run.marker(marker_index).x(2), 'p', ...
+        'Color', marker_color, 'MarkerFaceColor', marker_color, ...
+        'MarkerSize', 13);
+end
 
 % Plot the results without and with the marker.
 path_off_handle = plot_path_and_covariance(ax, off_run.node, path_off, ...
@@ -123,10 +126,14 @@ ylabel(ax, 'Location Y [m]')
 % Change for different plots
 title('Cavern environment')
 
-legend(ax, [path_off_handle, path_on_handle, range_handle, ...
-    marker_handle, start_handle, goal_handle], ...
-    {'Without marker', 'With marker', 'Marker sensing range', ...
-    'Marker', 'Start', 'Goal'}, 'Location', 'best', 'FontSize', 9)
+legend_handles = [path_off_handle,path_on_handle];
+legend_labels = {'Without marker', 'With marker'};
+if ~isempty(on_run.marker)
+    legend_handles = [legend_handles,range_handle,marker_handle];
+    legend_labels = [legend_labels,{'Marker sensing range', 'Marker'}];
+end
+legend(ax,[legend_handles,start_handle,goal_handle], ...
+    [legend_labels,{'Start','Goal'}],'Location','best','FontSize',9)
 
 %% Save the overlay figure and display path metrics
 
@@ -149,42 +156,29 @@ fprintf(['With marker   : Dtravel = %.6f m, tr(Pgoal) = %.6e, ', ...
 function trajectory_handle = plot_path_and_covariance(ax, node, path, ...
     R, chi, num_props, marker, marker_enabled, color)
 
-marker_has_been_sensed = false;
+marker_has_been_sensed = false(1,numel(marker));
 
 for ii = 1:numel(path)-1
     x0 = node(path(ii)).x;
     x1 = node(path(ii+1)).x;
     P0 = node(path(ii)).P;
     edge_distance = norm(x1-x0);
-    edge_senses_marker = false;
-
-    if marker_enabled && ~marker_has_been_sensed
-        [edge_senses_marker, marker_fraction] = ...
-            marker_encounter(x0, x1, marker);
-        if edge_senses_marker
-            P_before_marker = P0 + R*(marker_fraction*edge_distance);
-            P_after_marker = ekf_update_covariance(P_before_marker, ...
-                marker.H, marker.R);
-        end
+    marker_ids = []; marker_fractions = [];
+    if marker_enabled
+        [marker_ids,marker_fractions] = marker_events(x0,x1,marker,marker_has_been_sensed);
     end
 
     for jj = 0:num_props
         edge_fraction = jj/num_props;
         position = x0 + edge_fraction*(x1-x0);
 
-        if edge_senses_marker && edge_fraction > marker_fraction
-            P = P_after_marker + ...
-                R*((edge_fraction-marker_fraction)*edge_distance);
-        else
-            P = P0 + R*(edge_fraction*edge_distance);
-        end
+        P = marker_edge_covariance(P0,edge_distance,R,marker, ...
+            marker_ids,marker_fractions,edge_fraction);
 
         draw_covariance_ellipse(ax, position, P, chi, color)
     end
 
-    if edge_senses_marker
-        marker_has_been_sensed = true;
-    end
+    marker_has_been_sensed(marker_ids) = true;
 end
 
 positions = reshape([node(path).x], 2, []).';

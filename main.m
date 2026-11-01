@@ -63,24 +63,28 @@ chi = chi2inv(safety_probability,2);
 marker_enabled = true;
 
 % Comment the ones not in use and uncomment only the one in use
-% marker.x = [0.80, 0.60]; % baseline environment
+marker.x = [0.80, 0.60]; % baseline environment
 % marker.x = [0.87, 0.13]; % visual abstract environment
 % marker.x = [0.60, 0.35]; % forest environment
-marker.x = [0.85, 0.35]; % cavern environment
+% marker.x = [0.85, 0.35]; % cavern environment
 
 marker.sensing_radius = 0.10;
 marker.H = eye(2);
 marker.R = 1e-5 * eye(2);
+
+% To add another marker, copy the settings and change its position:
+% marker(2) = marker(1);
+% marker(2).x = [0.25, 0.55];
 
 %% Environment definition and Properties
 
 % current enviroment is  " multiple obstacle enviroment" 
 
         % Comment the ones not in use and uncomment only the one in use
-        % environment_name = 'baseline';
+        environment_name = 'baseline';
         % environment_name = 'visual_abstract';
         % environment_name = 'forest';
-        environment_name = 'cavern';
+        % environment_name = 'cavern';
         
         % define obstacle as a set of edges 
         % each edge is defined by: start point, end point, slope, and Y_axis
@@ -90,10 +94,10 @@ marker.R = 1e-5 * eye(2);
 
         % Target(final) area [xmin, xmax; ymin, ymax]. 
         % Comment the ones not in use and uncomment only the one in use
-        % target = [0.8, 0.9; 0.1, 0.2]; % baseline environment
+        target = [0.8, 0.9; 0.1, 0.2]; % baseline environment
         % target = [0.86, 0.96; 0.44, 0.56]; % visual abstract environment
         % target = [0.85, 0.95; 0.85, 0.95]; % forest environment
-        target = [0.85, 0.95; 0.85, 0.95]; % cavern environment
+        % target = [0.85, 0.95; 0.85, 0.95]; % cavern environment
 
         % Path planning area
         bound(1).x = [0,1];
@@ -101,10 +105,10 @@ marker.R = 1e-5 * eye(2);
 
         % The position of the initial node
         % Comment the ones not in use and uncomment only the one in use
-        % node(1).x = [0.1, 0.1]; % baseline environment
+        node(1).x = [0.1, 0.1]; % baseline environment
         % node(1).x = [0.1, 0.5]; % visual abstract environment
         % node(1).x = [0.1, 0.1]; % forest environment
-        node(1).x = [0.1, 0.1]; % cavern environment
+        % node(1).x = [0.1, 0.1]; % cavern environment
 
 %% The setting for initial node
 node(1).P = 1e-4 * eye(2);
@@ -150,9 +154,9 @@ x_all = reshape([node.x], 2, N).';
 neighbor_ID = rangesearch(x_all, x_all, connection_radius);
 
 % Step 3: Dijkstra search with EKF covariance and time propagation. When the
-% marker is present, use one layer before sensing and one after sensing.
+% markers are present, use a layer for each reachable sensed-marker subset.
 if marker_enabled
-    [node, distance, predecessor, path, min_path_leng] = ...
+    [node, distance, predecessor, path, min_path_leng, marker_search] = ...
         dijkstra_ekf_marker_prm(node, neighbor_ID, F, R, robot_speed, lambda, ...
         marker, obstacle_edge, chi, bound, num_props, prop, target);
 else
@@ -187,6 +191,7 @@ min_path_data(N) = min_path_leng;
 % Name includes environment, marker mode, N, lambda value, and safety probability.
 if marker_enabled
     marker_name = 'with_marker';
+    if numel(marker) ~= 1, marker_name = sprintf('with_%d_markers',numel(marker)); end
 else
     marker_name = 'without_marker';
 end
